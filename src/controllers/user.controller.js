@@ -4,11 +4,16 @@ import { User } from "../models/user.models.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import { COOKIE_OPTIONS } from "../constants.js";
 import jwt from "jsonwebtoken";
-import { sendVerificationEmail, sendUsernameEmail, sendRegisterationEmail, sendChangeEmail } from "../utils/nodemailer/email.js";
-import bcrypt from "bcryptjs";
+import {
+    sendVerificationEmail,
+    sendUsernameEmail,
+    sendRegisterationEmail,
+    sendChangeEmail
+} from "../utils/nodemailer/email.js";
 import { Game } from "../models/gameId.models.js";
-import passwordQueue from "../utils/bull/passwordQueue.js";
-import jobResults from "../utils/bull/passwordWorker.js";
+import passwordQueue from "../utils/bull/producers/passwordQueue.js";
+import changePasswordQueue from "../utils/bull/producers/changePasswordQueue.js";
+import forgotPasswordQueue from "../utils/bull/producers/forgotPasswordQueue.js";
 
 const registerUser = asyncHandler(async (req, res) => {
     const { username, email, password } = req.body;
@@ -32,42 +37,23 @@ const registerUser = asyncHandler(async (req, res) => {
             password:"PENDING HASH",
             verificationCode
         });
+
         const game = await Game.create({
             owner:user._id
         });
         
-        //bull queue 
-        const job = await passwordQueue.add({ userId: user._id, plainPassword: password ,});
-
-
-        //await sendVerificationEmail(user.email, user.verificationCode);
+        const job = await passwordQueue.add('hash-password', { userId: user._id, password });
         return res
             .status(202)
-            .json(new ApiResponse(202, { user,game, jobId: job.id }, "User registered. Password is being hashed."));
+            .json(new ApiResponse(
+                202,
+                { user, game, jobId: job.id },
+                "Registeration Initiated."
+            ));
     } catch (error) {
         throw new ApiError(500, error.message || "Internal Server Error.");
     }
 });
-
-
-const getJobStatus = asyncHandler(async (req, res) => {
-    const { jobId } = req.params;
-
-    const result = jobResults.get(jobId);
-
-    if (!result) {
-        return res.status(202).json({ message: "Password hashing in progress." });
-    }
-
-    if (result.error) {
-        throw new ApiError(500, "Password hashing failed.");
-    }
-
-    return res.status(200).json(
-        new ApiResponse(200, result, "Password hashing completed.")
-    );
-});
-
 
 const generateToken = async (user) => {
     try {
@@ -160,23 +146,29 @@ const changePassword = asyncHandler(async (req, res) => {
     if (!(oldPassword || newPassword)) {
         throw new ApiError(400, "All Fields Are Required.")
     }
-    const user = req.user;
-    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
-    if (!isPasswordCorrect) {
-        throw new ApiError(401, "Invalid Credentials.")
-    }
     if (oldPassword === newPassword) {
         throw new ApiError(400, "Old Password And New Password Cannot Be Same.")
     }
+    const user = req.user;
+    if (!user) {
+        throw new Error('User not found');
+    }
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+    if (!isPasswordCorrect) {
+        throw new Error('Old password is incorrect');
+    }
     try {
-        user.password = newPassword;
-        await user.save({
-            validateBeforeSave: false,
-        });
-        await sendChangeEmail(user.email, "password");
+        const job = await changePasswordQueue.add(
+            'change-password',
+            { userId: user._id, newPassword }
+        );
         return res
             .status(200)
-            .json(new ApiResponse(200, null, "Password Changed Successfully."));
+            .json(new ApiResponse(
+                200,
+                { jobId: job.id },
+                "Password Change Process Started."
+            ));
     } catch (error) {
         throw new ApiError(500, error.message || "Internal Server Error.");
     }
@@ -411,20 +403,14 @@ const forgotPassword = asyncHandler(async (req, res) => {
     if (isPasswordCorrect) {
         throw new ApiError(400, "Old Password And New Password Cannot Be Same.");
     }
-    const hashedPassword = await bcrypt.hash(password, 13);
     try {
-        const updatedUser = await User.findByIdAndUpdate(
-            user._id,
-            { password: hashedPassword, canChangePassword: false },
-            {
-                new: true,
-                validateBeforeSave: false,
-            }
-        ).select("-password");
-        await sendChangeEmail(updatedUser.email, "password");
+        const job = await forgotPasswordQueue.add(
+            'forgot-password',
+            { userId: user._id, password },
+        );
         return res
             .status(200)
-            .json(new ApiResponse(200, updatedUser, "Password changed Successfully!"));
+            .json(new ApiResponse(200, { jobId: job.id }, "Password Change Process Started."));
     } catch (error) {
         throw new ApiError(500, error.message || "Internal Server Error.");
     }
@@ -444,5 +430,4 @@ export {
     forgotPasswordVerificationEmail,
     forgotPasswordVerificationCode,
     forgotPassword,
-    getJobStatus
 };

@@ -12,8 +12,7 @@ import {
     forgotUsername,
     forgotPassword,
     forgotPasswordVerificationCode,
-    forgotPasswordVerificationEmail,
-    getJobStatus
+    forgotPasswordVerificationEmail
 } from "../controllers/user.controller.js";
 import {
     registerUserSchema,
@@ -41,7 +40,6 @@ router.route("/forgotUsername").post(validationSchema(forgotUsernameSchema), for
 router.route("/forgotPasswordVerificationEmail").post(validationSchema(forgotPasswordVerificationEmailSchema), forgotPasswordVerificationEmail);
 router.route("/forgotPasswordVerificationCode").post(validationSchema(forgotPasswordVerificationCodeSchema), forgotPasswordVerificationCode);
 router.route("/forgotPassword").patch(validationSchema(forgotPasswordSchema), forgotPassword);
-router.route("/job/:jobId").get(getJobStatus);
 // secured routes
 router.route("/logout").post(verifyToken, logoutUser);
 router.route("/changeUsername").patch(verifyToken, validationSchema(changeUsernameSchema), changeUsername);

@@ -1,4 +1,4 @@
-const DB_NAME = `assemble`;
+const DB_NAME = `queue`;
 
 const COOKIE_OPTIONS = {
     httpOnly: true,
@@ -14,7 +14,7 @@ const USER_BADGES = Object.freeze([
 
 const GAMES = Object.freeze([
     "Battlegrounds Mobile India",
-    "Call of Duty Mobile", 
+    "Call of Duty Mobile",
     "Free Fire",
     "Asphalt 9",
     "Valorant",
