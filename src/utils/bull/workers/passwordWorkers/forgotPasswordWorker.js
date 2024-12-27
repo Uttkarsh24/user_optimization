@@ -1,14 +1,15 @@
 import { Worker } from "bullmq";
-import { redisConnection } from "../../../libs/redisConfig.js";
-import { User } from "../../../models/user.models.js";
+import { redisConnection } from "../../../../libs/redisConfig.js";
+import { User } from "../../../../models/user.models.js";
 import bcrypt from "bcryptjs";
-import { sendErrorEmail } from "../../nodemailer/email.js";
-import { sendChangeEmail } from "../../nodemailer/email.js";
+import { sendErrorEmail } from "../../../nodemailer/email.js";
+import { sendChangeEmail } from "../../../nodemailer/email.js";
 
 const forgotPasswordWorker = new Worker(
     'forgot-password',
     async (job) => {
         const { userId, password } = job.data;
+        console.log(userId, password);
         const user = await User.findById(userId);
         const hashedPassword = await bcrypt.hash(password, 13);
         user.password = hashedPassword;

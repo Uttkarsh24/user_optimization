@@ -1,9 +1,9 @@
 import { Worker } from "bullmq";
-import { redisConnection } from "../../../libs/redisConfig.js";
-import { User } from "../../../models/user.models.js";
+import { redisConnection } from "../../../../libs/redisConfig.js";
+import { User } from "../../../../models/user.models.js";
 import bcrypt from "bcryptjs";
-import { sendVerificationEmail } from "../../nodemailer/email.js";
-import { sendErrorEmail } from "../../nodemailer/email.js";
+import { sendVerificationEmail } from "../../../nodemailer/email.js";
+import { sendErrorEmail } from "../../../nodemailer/email.js";
 
 const hashPasswordWorker = new Worker(
     'hash-password',

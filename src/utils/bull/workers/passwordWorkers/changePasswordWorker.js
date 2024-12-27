@@ -1,9 +1,9 @@
 import { Worker } from "bullmq";
-import { redisConnection } from "../../../libs/redisConfig.js";
-import { User } from "../../../models/user.models.js";
+import { redisConnection } from "../../../../libs/redisConfig.js";
+import { User } from "../../../../models/user.models.js";
 import bcrypt from "bcryptjs";
-import { sendErrorEmail } from "../../nodemailer/email.js";
-import { sendChangeEmail } from "../../nodemailer/email.js";
+import { sendErrorEmail } from "../../../nodemailer/email.js";
+import { sendChangeEmail } from "../../../nodemailer/email.js";
 
 const changePasswordWorker = new Worker(
     'change-password',
@@ -25,7 +25,7 @@ const changePasswordWorker = new Worker(
     },
 );
 
-changePasswordWorker.on('failed', async (job, err) => {
+changePasswordWorker.on('failed', async (job, _) => {
     try {
         const user = await User.findById(job.data.userId);
         sendErrorEmail(user.email, "Change Password");
